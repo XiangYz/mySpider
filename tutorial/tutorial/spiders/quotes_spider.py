@@ -1,5 +1,6 @@
 import scrapy
-
+import os
+import urllib
 
 class QuotesSpider(scrapy.Spider):
 	name = "quotes"
