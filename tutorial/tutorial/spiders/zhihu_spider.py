@@ -16,7 +16,7 @@ class ZhihuSpider(scrapy.Spider):
 			i = 1
 			for img_item in img_list:
 				file_name = user + "_" + str(i) + ".jpg"
-				file_path = os.path.join('D:\proj\pyprj\spider_img', file_name)
+				file_path = os.path.join('D:\\xiang\\zhihu_pic', file_name)
 				#urllib.urlretrieve(img_item, file_path)  #socket error
 				"""
 				urlopen = urllib.URLopener()
@@ -28,7 +28,6 @@ class ZhihuSpider(scrapy.Spider):
 				i = i + 1
 				"""
 				with requests.Session() as s:
-					#s.get(img_item)
 					with open(file_path, "wb") as f:
 					   f.write(s.get(img_item).content)
 		
@@ -45,4 +44,3 @@ class ZhihuSpider(scrapy.Spider):
 				file_path = os.path.join('.\\ibantang_imgs', file_name)
 				urllib.urlretrieve(img_item_src, file_path)
 		"""
-
