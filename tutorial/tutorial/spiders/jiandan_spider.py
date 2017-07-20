@@ -32,7 +32,7 @@ class ZhihuSpider(scrapy.Spider):
             if pos > 0:
                 img_item = item.xpath(".//img/@org_src").extract_first()
                 if not img_item:
-                continue
+                    continue
             file_name = "jiandan_" + str(self.i)
             self.i = self.i + 1
             file_path = os.path.join('D:\\xiang\\github_space\\jiandan_pic', file_name)
