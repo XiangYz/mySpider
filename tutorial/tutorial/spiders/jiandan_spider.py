@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import scrapy
 import os
 import urllib
@@ -22,8 +24,23 @@ class ZhihuSpider(scrapy.Spider):
     i = 1
 
     def parse(self, response):
+
+        stop = False
+
         list_item = response.xpath("//ol[@class='commentlist']/li")
         for item in list_item:
+
+            publish_time = item.xpath(".//div[@class='row']/div[@class='author']/small/a/text()").extract_first()
+            pub_time_list = publish_time.split()
+            if pub_time_list[1].lower() == "weeks":
+                stop = True
+                break
+            elif pub_time_list[1].lower() == "days":
+                days = pub_time_list[0][1:]
+                if int(days) >= 4:
+                    stop = True
+                    break
+
 
             img_item = item.xpath(".//img/@src").extract_first()
             if not img_item:
@@ -35,7 +52,7 @@ class ZhihuSpider(scrapy.Spider):
                     continue
             file_name = "jiandan_" + str(self.i)
             self.i = self.i + 1
-            file_path = os.path.join('D:\\xiang\\github_space\\jiandan_pic', file_name)
+            file_path = os.path.join('C:\\jiandan_pic', file_name)
             content = urllib2.urlopen("http:" + img_item).read()
 
             if not content:
@@ -47,8 +64,7 @@ class ZhihuSpider(scrapy.Spider):
             with open(file_path + "." + imgtype, 'wb') as picfile:
                 picfile.write(content)
 
-            
-
-        next_url = response.xpath("//div[@class='cp-pagenavi']/a[@class='previous-comment-page']/@href").extract_first()
-        if next_url:
-            yield scrapy.Request(next_url, headers = self.headers)
+        if not stop:   
+            next_url = response.xpath("//div[@class='cp-pagenavi']/a[@class='previous-comment-page']/@href").extract_first()
+            if next_url:
+                yield scrapy.Request(next_url, headers = self.headers)
