@@ -11,6 +11,6 @@ for f in list_file:
     abs_f = os.path.join(target_path, f)
     os.remove(abs_f)
 
-name = 'jiandan'
+name = '192tt'
 cmd = 'scrapy crawl {0}'.format(name)
 cmdline.execute(cmd.split())
