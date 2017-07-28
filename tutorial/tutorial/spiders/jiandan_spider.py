@@ -52,7 +52,7 @@ class ZhihuSpider(scrapy.Spider):
                     continue
             file_name = "jiandan_" + str(self.i)
             self.i = self.i + 1
-            file_path = os.path.join('C:\\jiandan_pic', file_name)
+            file_path = os.path.join('D:\\proj\\pyprj\\spider_img', file_name)
             content = urllib2.urlopen("http:" + img_item).read()
 
             if not content:
