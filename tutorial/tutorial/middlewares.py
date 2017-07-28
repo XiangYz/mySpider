@@ -7,6 +7,16 @@
 
 from scrapy import signals
 
+from selenium import webdriver
+from scrapy.conf import settings
+# from scrapy.http.response import Response
+from scrapy.http import HtmlResponse
+import time
+from scrapy import signals
+from scrapy.xlib.pydispatch import dispatcher 
+from telnetlib import DO
+import logging
+
 
 class TutorialSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
@@ -54,3 +64,34 @@ class TutorialSpiderMiddleware(object):
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+
+
+
+class JavaScriptMiddleware(object):
+    def __init__(self):
+        self.driver = webdriver.PhantomJS(executable_path=settings['JS_BIN'])
+    
+    
+    def process_request(self, request, spider):
+        self.driver.get(request.url)
+        logging.info("page rendering, auto pulling down...")
+        indexPage = 1000
+        while indexPage<self.driver.execute_script("return document.body.offsetHeight"):
+            self.driver.execute_script("scroll(0,"+str(indexPage)+")")
+            indexPage = indexPage +1000
+            logging.info(indexPage)
+            time.sleep(1)
+
+        rendered_body = self.driver.page_source
+        #编码处理
+        if r'charset="GBK"' in rendered_body or r'charset=gbk' in rendered_body:
+            coding = 'gbk'
+        else:
+            coding = 'utf-8'
+        return HtmlResponse(request.url, body=rendered_body, encoding='utf-8')
+    #关闭浏览器
+    def spider_closed(self, spider, reason):
+        logging.info ('driver closing......')
+        self.driver.close()
