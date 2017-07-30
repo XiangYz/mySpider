@@ -21,7 +21,9 @@ class ZhihuSpider(scrapy.Spider):
 
     def start_requests(self):
         url = 'http://www.192tt.com/gc/10qq/'
-        yield scrapy.Request(url, headers=self.headers)
+        req = scrapy.Request(url, headers = self.headers)
+        req.meta['PhantomJS'] = True
+        yield req
 
     i = 1
 
@@ -39,10 +41,10 @@ class ZhihuSpider(scrapy.Spider):
             img_item = item.xpath(".//a/img/@src").extract_first()
             if not img_item:
                 continue
-
+            logging.info("-------------------" + img_item + "-------------------")
             file_name = "192tt" + str(self.i)
             self.i = self.i + 1
-            file_path = os.path.join('C:\\192tt_pic', file_name)
+            file_path = os.path.join('D:\\proj\\pyprj\\spider_img', file_name)
             content = urllib2.urlopen(img_item).read()
 
             if not content:
@@ -53,9 +55,11 @@ class ZhihuSpider(scrapy.Spider):
             
             with open(file_path + "." + imgtype, 'wb') as picfile:
                 picfile.write(content)
-        '''
+        
         if not stop:   
-            next_url = response.xpath("//div[@class='cp-pagenavi']/a[@class='previous-comment-page']/@href").extract_first()
+            next_url = list_item.xpath("//div[@class='page']").xpath(".//a[@class='next']/@href").extract_first()
             if next_url:
-                yield scrapy.Request(next_url, headers = self.headers)
-        '''
+                req = scrapy.Request(next_url, headers = self.headers)
+                req.meta['PhantomJS'] = True
+                yield req
+        

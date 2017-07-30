@@ -63,22 +63,69 @@ class TutorialSpiderMiddleware(object):
             yield r
 
     def spider_opened(self, spider):
-        spider.logger.info('Spider opened: %s' % spider.name)
+        pass
+
+
+
 
 
 
 
 
 class JavaScriptMiddleware(object):
+    '''
     def __init__(self):
         self.driver = webdriver.PhantomJS(executable_path=settings['JS_BIN'])
-    
+    '''
     
     def process_request(self, request, spider):
+
+        js = '''
+        function scrollToBottom() {
+
+            var Height = document.body.clientHeight,  //文本高度
+            screenHeight = window.innerHeight,  //屏幕高度
+            INTERVAL = 100,  // 滚动动作之间的间隔时间
+            delta = 500,  //每次滚动距离
+            curScrollTop = 0;    //当前window.scrollTop 值
+
+            var scroll = function () {
+                curScrollTop = document.body.scrollTop;
+                window.scrollTo(0,curScrollTop + delta);
+            };
+
+            var timer = setInterval(function () {
+                var curHeight = curScrollTop + screenHeight;
+                if (curHeight >= Height){   //滚动到页面底部时，结束滚动
+                    clearInterval(timer);
+            }
+            
+            scroll();
+            }, INTERVAL)
+        }
+
+        '''
+
+        if request.meta.has_key('PhantomJS'):
+            driver = webdriver.PhantomJS(executable_path=settings['JS_BIN']) 
+            driver.get(request.url)
+            logging.info("-----------------" + str(request.url) + "-----------------")
+            logging.info("-----------------" + str(driver.current_url) + "-----------------")
+            time.sleep(1)
+            js = "var q=document.documentElement.scrollTop=10000"
+            driver.execute_script(js)   
+            time.sleep(2)  # 等待JS执行
+
+            content = driver.page_source.encode('utf-8')
+            driver.quit()  
+            return HtmlResponse(driver.current_url, encoding='utf-8', body=content, request=request)
+
+
+        '''
         self.driver.get(request.url)
         logging.info("page rendering, auto pulling down...")
         indexPage = 1000
-        while indexPage<self.driver.execute_script("return document.body.offsetHeight"):
+        while indexPage < self.driver.execute_script("return document.body.offsetHeight"):
             self.driver.execute_script("scroll(0,"+str(indexPage)+")")
             indexPage = indexPage +1000
             logging.info(indexPage)
@@ -91,7 +138,9 @@ class JavaScriptMiddleware(object):
         else:
             coding = 'utf-8'
         return HtmlResponse(request.url, body=rendered_body, encoding='utf-8')
+        '''
+
     #关闭浏览器
     def spider_closed(self, spider, reason):
-        logging.info ('driver closing......')
+        logging.info ('-------------------driver closing----------------------')
         self.driver.close()
