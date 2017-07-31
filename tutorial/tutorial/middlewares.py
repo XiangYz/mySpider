@@ -5,7 +5,11 @@
 # See documentation in:
 # http://doc.scrapy.org/en/latest/topics/spider-middleware.html
 
-from scrapy import signals
+
+import functools
+import json
+import multiprocessing.context
+import multiprocessing.pool
 
 from selenium import webdriver
 from scrapy.conf import settings
@@ -14,11 +18,108 @@ from scrapy.http import HtmlResponse
 import time
 from scrapy import signals
 from scrapy.xlib.pydispatch import dispatcher 
+from scrapy.http import HtmlResponse
+from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.remote.remote_connection import LOGGER
 from telnetlib import DO
 import logging
 
 
+LOGGER.setLevel(logging.INFO)
+
+def timeout(max_timeout):
+    '''
+    Timeout decorator, parameter in seconds.
+    http://stackoverflow.com/a/35139284/7035932
+    '''
+    def timeout_decorator(item):
+        @functools.wraps(item)
+        def func_wrapper(*args, **kwargs):
+            pool = multiprocessing.pool.ThreadPool(processes=1)
+            async_result = pool.apply_async(item, args, kwargs)
+            return async_result.get(max_timeout)
+        return func_wrapper
+    return timeout_decorator
+
+logger = logging.getLogger(__name__)
+
+def getresponse(driver):
+    log = driver.get_log('har')
+    log = json.loads(log[0]['message'])
+    return log['log']['entries'][0]['response']
+
+
+class PhantomJSMiddleware(object):
+
+    def __init__(self):
+        self.driver = None
+
+    def __del__(self):
+        if self.driver:
+            self.driver.quit()
+
+    def injectheaders(self, headers):
+        caps = DesiredCapabilities.PHANTOMJS.copy()
+        caps['phantomjs.page.settings.loadImages'] = True
+        # caps['proxy'] = proxy json object
+        # https://github.com/SeleniumHQ/selenium/wiki/DesiredCapabilities#proxy-json-object
+        if 'User-Agent' in headers:
+            caps['phantomjs.page.settings.UserAgent'] = headers['User-Agent']
+            del headers['User-Agent']
+        for key in headers:
+            caps['phantomjs.page.customheaders.' + key] = headers[key]
+        self.driver.start_session(caps)
+
+    @timeout(10)
+    def _process_request(self, request, spider):
+        driver = self.driver
+        headers = request.headers.to_unicode_dict()
+        encoding = request.encoding
+        self.injectheaders(headers)
+        driver.get(request.url)
+        isnotloaded = True
+        while isnotloaded:
+            time.sleep(0.1)
+            try:
+                response = getresponse(driver)
+                if response['status']:
+                    isnotloaded = False
+            except IndexError:
+                pass
+        body = driver.page_source
+        status_code = response['status']
+        headers = [(x['name'], x['value']) for x in response['headers']]
+        return HtmlResponse(driver.current_url, body=body,
+                            status=status_code, headers=headers,
+                            encoding=encoding, request=request)
+
+    def process_request(self, request, spider):
+        if self.driver is None:
+            self.driver = webdriver.PhantomJS()
+        if request.method != 'GET':
+            raise NotImplementedError(
+                'Do not support {r.method} method'.format(r=request))
+        isnotworking = True
+        while isnotworking:
+            try:
+                return self._process_request(request, spider)
+            except multiprocessing.context.TimeoutError:
+                logger.warning('Timeout ...')
+            except Exception as e:
+                msg = str(e).strip()
+                if msg:
+                    logger.error(msg)
+            logger.info('restart process_request')
+            self.driver.quit()
+            self.driver = webdriver.PhantomJS()
+
+
+
 class TutorialSpiderMiddleware(object):
+
+
+
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
     # passed objects.
@@ -72,75 +173,3 @@ class TutorialSpiderMiddleware(object):
 
 
 
-class JavaScriptMiddleware(object):
-    '''
-    def __init__(self):
-        self.driver = webdriver.PhantomJS(executable_path=settings['JS_BIN'])
-    '''
-    
-    def process_request(self, request, spider):
-
-        js = '''
-        function scrollToBottom() {
-
-            var Height = document.body.clientHeight,  //文本高度
-            screenHeight = window.innerHeight,  //屏幕高度
-            INTERVAL = 100,  // 滚动动作之间的间隔时间
-            delta = 500,  //每次滚动距离
-            curScrollTop = 0;    //当前window.scrollTop 值
-
-            var scroll = function () {
-                curScrollTop = document.body.scrollTop;
-                window.scrollTo(0,curScrollTop + delta);
-            };
-
-            var timer = setInterval(function () {
-                var curHeight = curScrollTop + screenHeight;
-                if (curHeight >= Height){   //滚动到页面底部时，结束滚动
-                    clearInterval(timer);
-            }
-            
-            scroll();
-            }, INTERVAL)
-        }
-
-        '''
-
-        if request.meta.has_key('PhantomJS'):
-            driver = webdriver.PhantomJS(executable_path=settings['JS_BIN']) 
-            driver.get(request.url)
-            logging.info("-----------------" + str(request.url) + "-----------------")
-            logging.info("-----------------" + str(driver.current_url) + "-----------------")
-            time.sleep(1)
-            js = "var q=document.documentElement.scrollTop=10000"
-            driver.execute_script(js)   
-            time.sleep(2)  # 等待JS执行
-
-            content = driver.page_source.encode('utf-8')
-            driver.quit()  
-            return HtmlResponse(driver.current_url, encoding='utf-8', body=content, request=request)
-
-
-        '''
-        self.driver.get(request.url)
-        logging.info("page rendering, auto pulling down...")
-        indexPage = 1000
-        while indexPage < self.driver.execute_script("return document.body.offsetHeight"):
-            self.driver.execute_script("scroll(0,"+str(indexPage)+")")
-            indexPage = indexPage +1000
-            logging.info(indexPage)
-            time.sleep(1)
-
-        rendered_body = self.driver.page_source
-        #编码处理
-        if r'charset="GBK"' in rendered_body or r'charset=gbk' in rendered_body:
-            coding = 'gbk'
-        else:
-            coding = 'utf-8'
-        return HtmlResponse(request.url, body=rendered_body, encoding='utf-8')
-        '''
-
-    #关闭浏览器
-    def spider_closed(self, spider, reason):
-        logging.info ('-------------------driver closing----------------------')
-        self.driver.close()

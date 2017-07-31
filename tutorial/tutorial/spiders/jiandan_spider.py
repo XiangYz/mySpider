@@ -37,7 +37,7 @@ class ZhihuSpider(scrapy.Spider):
                 break
             elif pub_time_list[1].lower() == "days":
                 days = pub_time_list[0][1:]
-                if int(days) >= 2:
+                if int(days) >= 3:
                     stop = True
                     break
 
@@ -52,7 +52,7 @@ class ZhihuSpider(scrapy.Spider):
                     continue
             file_name = "jiandan_" + str(self.i)
             self.i = self.i + 1
-            file_path = os.path.join('D:\\proj\\pyprj\\spider_img', file_name)
+            file_path = os.path.join('c:\\jiandan_pic', file_name)
             content = urllib2.urlopen("http:" + img_item).read()
 
             if not content:
