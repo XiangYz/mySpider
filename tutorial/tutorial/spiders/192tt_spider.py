@@ -41,12 +41,13 @@ class ZhihuSpider(scrapy.Spider):
             img_item = item.xpath(".//a/img/@src").extract_first()
             if not img_item:
                 continue
-            logging.info("-------------------" + img_item + "-------------------")
             file_name = "192tt" + str(self.i)
             self.i = self.i + 1
-            file_path = os.path.join('D:\\proj\\pyprj\\spider_img', file_name)
-            content = urllib2.urlopen(img_item).read()
-
+            file_path = os.path.join('c:\\192tt_pic', file_name)
+            logging.info("---------------urllib2: " + img_item)
+            
+            img_req = urllib2.Request(img_item, headers=self.headers)
+            content = urllib2.urlopen(img_req).read()
             if not content:
                 continue
             imgtype = imghdr.what('', h = content)
@@ -55,6 +56,8 @@ class ZhihuSpider(scrapy.Spider):
             
             with open(file_path + "." + imgtype, 'wb') as picfile:
                 picfile.write(content)
+
+            
         
         if not stop:   
             next_url = list_item.xpath("//div[@class='page']").xpath(".//a[@class='next']/@href").extract_first()

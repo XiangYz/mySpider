@@ -37,7 +37,7 @@ class ZhihuSpider(scrapy.Spider):
                 break
             elif pub_time_list[1].lower() == "days":
                 days = pub_time_list[0][1:]
-                if int(days) >= 3:
+                if int(days) >= 1:
                     stop = True
                     break
 
