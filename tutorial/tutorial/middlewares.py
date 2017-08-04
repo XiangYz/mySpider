@@ -69,9 +69,15 @@ class PhantomJSMiddleware(object):
             logging.info("--------------" + request.url)
             driver.get(request.url)
             #time.sleep(1)
-            js1 = "document.body.scrollTop=10000" 
-            driver.execute_script(js1) #可执行js，模仿用户操作。此处为将页面拉至最底端。       
-            time.sleep(3)
+            js1 = 'return document.body.scrollHeight'
+            js2 = "window.scrollTo(0, document.body.scrollHeight)" 
+            old_scroll_height = 0
+            while(driver.execute_script(js1) > old_scroll_height):
+                old_scroll_height = driver.execute_script(js1)
+                driver.execute_script(js2)
+                time.sleep(3)
+            #driver.execute_script(js1) #可执行js，模仿用户操作。此处为将页面拉至最底端。       
+            #time.sleep(3)
             body = driver.page_source
             cur_url = driver.current_url
             driver.quit()

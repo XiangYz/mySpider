@@ -22,7 +22,7 @@ class ZhihuSpider(scrapy.Spider):
     def start_requests(self):
         url = 'http://www.192tt.com/gc/10qq/'
         req = scrapy.Request(url, headers = self.headers)
-        req.meta['PhantomJS'] = True
+        #req.meta['PhantomJS'] = True
         yield req
 
     i = 1
@@ -34,25 +34,32 @@ class ZhihuSpider(scrapy.Spider):
         list_item = response.xpath("//div[@class='piclist']").xpath(".//li")
         for item in list_item:
 
-            publish_time = item.xpath(".//b[@class='b1']/text()").extract_first()
-            pub_time_list = publish_time.split('-')
-
+            #publish_time = item.xpath(".//b[@class='b1']/text()").extract_first()
+            #pub_time_list = publish_time.split('-')
 
             img_item = item.xpath(".//a/img/@src").extract_first()
             if not img_item:
                 continue
-            file_name = "192tt" + str(self.i)
-            self.i = self.i + 1
-            file_path = os.path.join('c:\\192tt_pic', file_name)
             logging.info("---------------urllib2: " + img_item)
             
+
             img_req = urllib2.Request(img_item, headers=self.headers)
-            content = urllib2.urlopen(img_req).read()
+            content = None
+            try:
+                content = urllib2.urlopen(img_req).read()
+            except:
+                continue
             if not content:
                 continue
+
             imgtype = imghdr.what('', h = content)
             if not imgtype:
                 continue
+
+
+            file_name = "192tt" + str(self.i)
+            self.i = self.i + 1
+            file_path = os.path.join('c:\\192tt_pic', file_name)
             
             with open(file_path + "." + imgtype, 'wb') as picfile:
                 picfile.write(content)
@@ -63,6 +70,6 @@ class ZhihuSpider(scrapy.Spider):
             next_url = list_item.xpath("//div[@class='page']").xpath(".//a[@class='next']/@href").extract_first()
             if next_url:
                 req = scrapy.Request(next_url, headers = self.headers)
-                req.meta['PhantomJS'] = True
+                #req.meta['PhantomJS'] = True
                 yield req
         
